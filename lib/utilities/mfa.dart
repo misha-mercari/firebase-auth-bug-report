@@ -34,8 +34,28 @@ class VerificationMFA extends MFA {
   final MultiFactorResolver resolver;
 }
 
+Future<MFA> login({
+  required String email,
+  required String password,
+}) async {
+  if (FirebaseAuth.instance.currentUser != null) {
+    await FirebaseAuth.instance.signOut();
+  }
+
+  try {
+    final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    return EnrollmentMFA(user: credential.user!);
+  } on FirebaseAuthMultiFactorException catch (e) {
+    return VerificationMFA(resolver: e.resolver);
+  }
+}
+
 /// Enrolls a user into SMS-based MFA. The [enrollment] parameter must be
-/// acquired by a login attempt to the authentication service.
+/// acquired by a call to [login].
 Future<void> enrollMFA({
   required BuildContext context,
   required EnrollmentMFA enrollment,
@@ -51,7 +71,7 @@ Future<void> enrollMFA({
 }
 
 /// Verifies a user with SMS-based MFA. The [verification] parameter must be
-/// acquired by a login attempt to the authentication service.
+/// acquired by a call to [login].
 Future<void> verifyMFA({
   required BuildContext context,
   required VerificationMFA verification,

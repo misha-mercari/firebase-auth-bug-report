@@ -1,14 +1,12 @@
-import 'package:mfa_app/services/auth.dart';
+import 'package:mfa_app/hooks/use_user.dart';
 import 'package:mfa_app/utilities/mfa.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-class LoginScreen extends HookConsumerWidget {
+class LoginScreen extends HookWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(userProvider);
-    final authService = ref.read(authServiceProvider);
+  Widget build(BuildContext context) {
+    final user = useCurrentUser();
     final emailController = useTextEditingController();
     final passwordController = useTextEditingController();
     final phoneNumberController = useTextEditingController();
@@ -36,7 +34,7 @@ class LoginScreen extends HookConsumerWidget {
               ElevatedButton(
                 onPressed: () async {
                   try {
-                    final mfa = await authService.login(
+                    final mfa = await login(
                       email: emailController.text,
                       password: passwordController.text,
                     );
