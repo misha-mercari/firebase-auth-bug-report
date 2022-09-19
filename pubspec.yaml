@@ -7,7 +7,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_hooks: ^0.18.5+1
   firebase_auth: ^3.9.0
   firebase_core: ^1.22.0
 
