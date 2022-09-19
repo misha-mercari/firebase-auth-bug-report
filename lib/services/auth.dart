@@ -1,14 +1,12 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:flutter/material.dart';
 import 'package:mfa_app/models/user.dart';
 import 'package:mfa_app/utilities/mfa.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
 
-part 'auth.freezed.dart';
-
-final _authStateProvider = StateProvider((_) => AuthState.loggedOut());
+final _authStateProvider = StateProvider<AuthState>((_) => LoggedOutAuthState());
 
 final authStateProvider = Provider((ref) => ref.watch(_authStateProvider));
 
@@ -16,19 +14,23 @@ final authServiceProvider = Provider<AuthService>((ref) => FirebaseAuthService(r
 
 final userProvider = Provider((ref) => ref.watch(authStateProvider).user);
 
-@freezed
-class AuthState with _$AuthState {
-  AuthState._();
+abstract class AuthState {
+  User? get user;
+}
 
-  factory AuthState.loggedIn({
-    required User user,
-  }) = _LoggedInAuthState;
+class LoggedInAuthState extends AuthState {
+  LoggedInAuthState({
+    required this.user,
+  });
 
-  factory AuthState.loggedOut() = _LoggedOutAuthState;
+  @override
+  final User user;
+}
 
-  User? get user => mapOrNull(
-        loggedIn: (login) => login.user,
-      );
+class LoggedOutAuthState extends AuthState {
+  LoggedOutAuthState();
+
+  User? get user => null;
 }
 
 abstract class AuthService {
@@ -49,7 +51,7 @@ class FirebaseAuthService implements AuthService {
   Future<void> init() async {
     Future<AuthState> computeNextState(fb.User? user) async {
       if (user == null) {
-        return AuthState.loggedOut();
+        return LoggedOutAuthState();
       }
 
       final enrolledFactors = await user.multiFactor.getEnrolledFactors();
@@ -57,14 +59,13 @@ class FirebaseAuthService implements AuthService {
       // If the user has not enrolled in phone MFA, then they still can't use the
       // API - so for the rest of the application, the user is still "logged out".
       if (!enrolledFactors.any((factor) => factor is fb.PhoneMultiFactorInfo)) {
-        return AuthState.loggedOut();
+        return LoggedOutAuthState();
       }
 
-      return AuthState.loggedIn(
+      return LoggedInAuthState(
         user: User(
           id: user.uid,
           email: user.email!,
-          displayName: user.displayName,
         ),
       );
     }
@@ -91,9 +92,9 @@ class FirebaseAuthService implements AuthService {
         password: password,
       );
 
-      return MFA.enrollment(user: credential.user!);
+      return EnrollmentMFA(user: credential.user!);
     } on fb.FirebaseAuthMultiFactorException catch (e) {
-      return MFA.verification(resolver: e.resolver);
+      return VerificationMFA(resolver: e.resolver);
     }
   }
 

@@ -1,14 +1,10 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
+class User {
+  User({
+    required this.id,
+    required this.email,
+  });
 
-part 'user.freezed.dart';
+  final String id;
 
-@freezed
-class User with _$User {
-  User._();
-
-  factory User({
-    required String id,
-    required String email,
-    String? displayName,
-  }) = _User;
+  final String email;
 }

@@ -41,7 +41,7 @@ class LoginScreen extends HookConsumerWidget {
                       password: passwordController.text,
                     );
 
-                    await mfa.map(
+                    await mfa.when(
                       enrollment: (enrollment) => enrollMFA(
                         context: context,
                         enrollment: enrollment,

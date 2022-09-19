@@ -2,28 +2,43 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'mfa.freezed.dart';
 
 /// This object describes Firebase internal state required in order to process
 /// one of the two MFA flows, enrollment or verification.
-@freezed
-class MFA with _$MFA {
-  factory MFA.enrollment({
-    required User user,
-  }) = MFAEnrollment;
+abstract class MFA {
+  T when<T>({
+    required T Function(EnrollmentMFA) enrollment,
+    required T Function(VerificationMFA) verification,
+  }) {
+    if (this is EnrollmentMFA) {
+      return enrollment(this as EnrollmentMFA);
+    } else {
+      return verification(this as VerificationMFA);
+    }
+  }
+}
 
-  factory MFA.verification({
-    required MultiFactorResolver resolver,
-  }) = MFAVerification;
+class EnrollmentMFA extends MFA {
+  EnrollmentMFA({
+    required this.user,
+  });
+
+  final User user;
+}
+
+class VerificationMFA extends MFA {
+  VerificationMFA({
+    required this.resolver,
+  });
+
+  final MultiFactorResolver resolver;
 }
 
 /// Enrolls a user into SMS-based MFA. The [enrollment] parameter must be
 /// acquired by a login attempt to the authentication service.
 Future<void> enrollMFA({
   required BuildContext context,
-  required MFAEnrollment enrollment,
+  required EnrollmentMFA enrollment,
   required String phoneNumber,
 }) async {
   final assertion = await _executeMFA(context, enrollment, phoneNumber);
@@ -39,7 +54,7 @@ Future<void> enrollMFA({
 /// acquired by a login attempt to the authentication service.
 Future<void> verifyMFA({
   required BuildContext context,
-  required MFAVerification verification,
+  required VerificationMFA verification,
 }) async {
   final assertion = await _executeMFA(context, verification);
 
@@ -66,15 +81,15 @@ Future<MultiFactorAssertion?> _executeMFA(
   PhoneMultiFactorInfo? multiFactorInfo;
 
   await mfa.when(
-    enrollment: (user) async {
+    enrollment: (mfa) async {
       // For enrollment, the phone number and session are required.
       assert(phoneNumber != null, 'Enrollment requires a phone number.');
-      multiFactorSession = await user.multiFactor.getSession();
+      multiFactorSession = await mfa.user.multiFactor.getSession();
     },
-    verification: (resolver) {
+    verification: (mfa) {
       // For verification, the session and info are required.
-      multiFactorSession = resolver.session;
-      multiFactorInfo = resolver.hints.first as PhoneMultiFactorInfo;
+      multiFactorSession = mfa.resolver.session;
+      multiFactorInfo = mfa.resolver.hints.first as PhoneMultiFactorInfo;
     },
   );
 
